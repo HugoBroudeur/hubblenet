@@ -1,0 +1,98 @@
+name: Build + Push ooNodz image
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_oonodz_mainnet_image:
+    name: Build Docker Image
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Docker hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }} 
+          password: ${{ secrets.DOCKER_PASS }} 
+
+      - name: Create the Dockerfile
+        run: |
+          multiline_text=$(cat <<EOF
+          ARG AVALANCHE_VERSION
+
+          FROM avaplatform/avalanchego:\${AVALANCHE_VERSION} as builder
+          ARG HUBBLENET_RELEASE_TAG
+
+          RUN if [ "\${HUBBLENET_RELEASE_TAG:0:1}" = "v" ]; then \
+                HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG:1}"; \
+                export HUBBLENET_RELEASE_TAG="\${HUBBLENET_RELEASE_TAG}"; \
+              else \
+                export HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG}"; \
+              fi
+
+          RUN apt update \
+            && DEBIAN_FRONTEND="noninteractive" apt install -y wget \
+            && cd /tmp \
+            && wget https://github.com/hubble-exchange/hubblenet/releases/download/\${HUBBLENET_RELEASE_TAG}/hubblenet_\${HUBBLENET_VERSION}_linux_amd64.tar.gz \
+            && tar xf hubblenet_\${HUBBLENET_VERSION}_linux_amd64.tar.gz
+
+          FROM avaplatform/avalanchego:\${AVALANCHE_VERSION}
+          LABEL Description="Hubblenet image"
+          ARG HUBBLENET_RELEASE_TAG
+
+          RUN mkdir -p /root/.avalanchego/plugins \
+            && DEBIAN_FRONTEND="noninteractive" apt update \
+            && DEBIAN_FRONTEND="noninteractive" apt install -y wget
+
+          RUN if [ "\${HUBBLENET_RELEASE_TAG:0:1}" = "v" ]; then \
+              HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG:1}"; \
+              export HUBBLENET_RELEASE_TAG="\${HUBBLENET_RELEASE_TAG}"; \
+            else \
+              export HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG}"; \
+            fi
+
+          EOF
+          )
+
+          if [ "$AVALANCHE_ENVIRONMENT" = "mainnet" ]; then
+            multiline_text+="\nCOPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz"
+          fi
+          if [ "$AVALANCHE_ENVIRONMENT" = "testnet" ]; then
+            multiline_text+="\nCOPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ"
+          fi
+
+          echo "$multiline_text" > Dockerfile-release 
+
+      - name: Build and push release image for the mainnet
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile-release
+          push: true
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ github.ref_name }}"
+        env:
+          HUBBLENET_RELEASE_TAG: "${{github.ref_name}}"
+          AVALANCHE_VERSION: "${{ vars.AVALANCHE_VERSION }}"
+          AVALANCHE_ENVIRONMENT: mainnet
+
+      - name: Build and push release image for the fuji
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile-release
+          push: true
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ github.ref_name }}"
+        env:
+          HUBBLENET_RELEASE_TAG: "${{github.ref_name}}"
+          AVALANCHE_VERSION: "${{ vars.AVALANCHE_VERSION }}"
+          AVALANCHE_ENVIRONMENT: testnet
