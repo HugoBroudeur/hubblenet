@@ -1,12 +1,9 @@
-name: Build + Push ooNodz image
+name: Build and Push aylin image
 
 on:
   push:
     branches:
       - aylin
-      - main
-    tags:
-      - "*"
 
 defaults:
   run:
@@ -32,21 +29,16 @@ jobs:
 
       - name: Build Dockerfile and Push it
         run: |
-          TAG_FUJI=""
+          TAG_FUJI="fuji-"
+          TAG_END=$GITHUB_SHA
           
-          if [ "$CURRENT_BRANCH" == "aylin" ]; then
-            TAG_FUJI="fuji-"
-            echo "COPY --from=builder /build/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ /root/.avalanchego/plugins/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ" >> Dockerfile
-          fi
-
           if [ -n "$GITHUB_TAG" ]; then
             TAG_END=$GITHUB_TAG
-          else
-            TAG_END=$GITHUB_SHA
           fi
 
-          export BUILD_IMAGE_ID="${{ vars.AVALANCHE_VERSION }}-${TAG_FUJI}${TAG_END}"
+          export BUILD_IMAGE_ID="${{ vars.AVALANCHE_VERSION_DEV }}-${TAG_FUJI}${TAG_END}"
 
+          echo "COPY --from=builder /build/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ /root/.avalanchego/plugins/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ" >> Dockerfile
           ./scripts/build_image.sh
         env:
           CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }} 
