@@ -81,10 +81,10 @@ jobs:
           file: ./Dockerfile-release
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ github.ref_name }}"
-        env:
-          HUBBLENET_RELEASE_TAG: ${{github.ref_name}}
-          AVALANCHE_VERSION: ${{ vars.AVALANCHE_VERSION }}
-          VM_ID: o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz
+          build-args: | 
+            HUBBLENET_RELEASE_TAG="${{github.ref_name}}"
+            AVALANCHE_VERSION="${{ vars.AVALANCHE_VERSION }}"
+            VM_ID="o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz"
 
 
       - name: Build and push release image for the fuji
@@ -94,7 +94,7 @@ jobs:
           file: ./Dockerfile-release
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ github.ref_name }}"
-        env:
-          HUBBLENET_RELEASE_TAG: ${{github.ref_name}}
-          AVALANCHE_VERSION: ${{ vars.AVALANCHE_VERSION }}
-          VM_ID: jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ 
+          build-args: |
+            HUBBLENET_RELEASE_TAG="${{github.ref_name}}"
+            AVALANCHE_VERSION="${{ vars.AVALANCHE_VERSION }}"
+            VM_ID="jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ" 
