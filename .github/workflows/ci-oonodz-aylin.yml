@@ -1,4 +1,4 @@
-name: Build and Push aylin image
+name: Build + Push aylin image
 
 on:
   push:

@@ -1,21 +1,22 @@
-name: Build + Push ooNodz image
+name: Build + Push release image
 
 on:
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag'
+        required: true
+        type: string
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  build_oonodz_mainnet_image:
+  build_release_image:
     name: Build Docker Image
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,16 +25,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }} 
           password: ${{ secrets.DOCKER_PASS }} 
-
-      - name: Get Current Tag
-        id: get_tag
-        run: echo ::set-output name=tag::$(git describe --abbrev=0 --tags)
-
-      - name: Debug vars
-        run: |
-          echo "tag: ${{ github.ref_name }}\n"
-          echo "avalanche version: ${{ vars.AVALANCHE_VERSION }}\n"
-          echo "tag bis: ${{ steps.get_tag.outputs.tag }}\n"
 
       - name: Create the Dockerfile
         run: |
@@ -86,9 +77,9 @@ jobs:
           context: .
           file: ./Dockerfile-release
           push: true
-          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ steps.get_tag.outputs.tag }}"
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ inputs.release_tag }}"
           build-args: | 
-            HUBBLENET_RELEASE_TAG=${{ steps.get_tag.outputs.tag }}
+            HUBBLENET_RELEASE_TAG=${{ inputs.release_tag }}
             AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
             VM_ID=o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz
 
@@ -99,8 +90,8 @@ jobs:
           context: .
           file: ./Dockerfile-release
           push: true
-          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ steps.get_tag.outputs.tag }}"
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ inputs.release_tag }}"
           build-args: |
-            HUBBLENET_RELEASE_TAG=${{ steps.get_tag.outputs.tag  }}
+            HUBBLENET_RELEASE_TAG=${{ inputs.release_tag  }}
             AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
             VM_ID=jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ 
