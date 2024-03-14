@@ -25,10 +25,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }} 
           password: ${{ secrets.DOCKER_PASS }} 
 
+      - name: Get Current Tag
+        id: get_tag
+        run: echo ::set-output name=tag::$(git describe --abbrev=0 --tags)
+
       - name: Debug vars
         run: |
           echo "tag: ${{ github.ref_name }}\n"
           echo "avalanche version: ${{ vars.AVALANCHE_VERSION }}\n"
+          echo "tag bis: ${{ steps.get_tag.outputs.tag }}\n"
 
       - name: Create the Dockerfile
         run: |
@@ -73,6 +78,7 @@ jobs:
           )
           
           echo "$multiline_text" > Dockerfile-release 
+          cat Dockerfile-release
 
       - name: Build and push release image for the mainnet
         uses: docker/build-push-action@v5
@@ -80,11 +86,11 @@ jobs:
           context: .
           file: ./Dockerfile-release
           push: true
-          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ github.ref_name }}"
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ steps.get_tag.outputs.tag }}"
           build-args: | 
-            HUBBLENET_RELEASE_TAG="${{github.ref_name}}"
-            AVALANCHE_VERSION="${{ vars.AVALANCHE_VERSION }}"
-            VM_ID="o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz"
+            HUBBLENET_RELEASE_TAG=${{ steps.get_tag.outputs.tag }}
+            AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
+            VM_ID=o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz
 
 
       - name: Build and push release image for the fuji
@@ -93,8 +99,8 @@ jobs:
           context: .
           file: ./Dockerfile-release
           push: true
-          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ github.ref_name }}"
+          tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ steps.get_tag.outputs.tag }}"
           build-args: |
-            HUBBLENET_RELEASE_TAG="${{github.ref_name}}"
-            AVALANCHE_VERSION="${{ vars.AVALANCHE_VERSION }}"
-            VM_ID="jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ" 
+            HUBBLENET_RELEASE_TAG=${{ steps.get_tag.outputs.tag  }}
+            AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
+            VM_ID=jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ 
