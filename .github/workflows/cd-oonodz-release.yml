@@ -27,43 +27,35 @@ jobs:
           password: ${{ secrets.DOCKER_PASS }} 
 
       - name: Create the Dockerfile
+        env:
+          HUBBLENET_RELEASE_TAG: ${{ inputs.release_tag }}
+          AVALANCHE_VERSION: ${{ vars.AVALANCHE_VERSION }}
         run: |
+          if [ "${HUBBLENET_RELEASE_TAG:0:1}" = "v" ]; then
+            HUBBLENET_VERSION="${HUBBLENET_RELEASE_TAG:1}";
+            HUBBLENET_RELEASE_TAG="${HUBBLENET_RELEASE_TAG}";
+          else
+            HUBBLENET_VERSION="${HUBBLENET_RELEASE_TAG}";
+          fi
+
           multiline_text=$(cat <<EOF
-          ARG AVALANCHE_VERSION
-
-          FROM avaplatform/avalanchego:\${AVALANCHE_VERSION} as builder
-          ARG HUBBLENET_RELEASE_TAG
-
-          RUN if [ "\${HUBBLENET_RELEASE_TAG:0:1}" = "v" ]; then \
-                HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG:1}"; \
-                export HUBBLENET_RELEASE_TAG="\${HUBBLENET_RELEASE_TAG}"; \
-              else \
-                export HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG}"; \
-              fi
+          FROM avaplatform/avalanchego:${AVALANCHE_VERSION} as builder
 
           RUN apt update \
             && DEBIAN_FRONTEND="noninteractive" apt install -y wget \
             && cd /tmp \
-            && wget https://github.com/hubble-exchange/hubblenet/releases/download/\${HUBBLENET_RELEASE_TAG}/hubblenet_\${HUBBLENET_VERSION}_linux_amd64.tar.gz \
-            && tar xf hubblenet_\${HUBBLENET_VERSION}_linux_amd64.tar.gz
+            && wget https://github.com/hubble-exchange/hubblenet/releases/download/${HUBBLENET_RELEASE_TAG}/hubblenet_${HUBBLENET_VERSION}_linux_amd64.tar.gz \
+            && tar xf hubblenet_${HUBBLENET_VERSION}_linux_amd64.tar.gz
 
-          FROM avaplatform/avalanchego:\${AVALANCHE_VERSION}
+          FROM avaplatform/avalanchego:${AVALANCHE_VERSION}
           LABEL Description="Hubblenet image"
-          ARG HUBBLENET_RELEASE_TAG
           ARG VM_ID
 
           RUN mkdir -p /root/.avalanchego/plugins \
             && DEBIAN_FRONTEND="noninteractive" apt update \
             && DEBIAN_FRONTEND="noninteractive" apt install -y wget
 
-          RUN if [ "\${HUBBLENET_RELEASE_TAG:0:1}" = "v" ]; then \
-              HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG:1}"; \
-              export HUBBLENET_RELEASE_TAG="\${HUBBLENET_RELEASE_TAG}"; \
-            else \
-              export HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG}"; \
-            fi
-
-          COPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/\${VM_ID}
+          COPY --from=builder /tmp/hubblenet-${HUBBLENET_VERSION} /root/.avalanchego/plugins/\${VM_ID}
 
           EOF
           )
@@ -79,8 +71,6 @@ jobs:
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ inputs.release_tag }}"
           build-args: | 
-            HUBBLENET_RELEASE_TAG=${{ inputs.release_tag }}
-            AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
             VM_ID=o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz
 
 
@@ -92,6 +82,4 @@ jobs:
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ inputs.release_tag }}"
           build-args: |
-            HUBBLENET_RELEASE_TAG=${{ inputs.release_tag  }}
-            AVALANCHE_VERSION=${{ vars.AVALANCHE_VERSION }}
             VM_ID=jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ 
