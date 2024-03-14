@@ -25,6 +25,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }} 
           password: ${{ secrets.DOCKER_PASS }} 
 
+      - name: Debug vars
+        run: |
+          echo "tag: ${{ github.ref_name }}\n"
+          echo "avalanche version: ${{ vars.AVALANCHE_VERSION }}\n"
+
       - name: Create the Dockerfile
         run: |
           multiline_text=$(cat <<EOF
@@ -49,6 +54,7 @@ jobs:
           FROM avaplatform/avalanchego:\${AVALANCHE_VERSION}
           LABEL Description="Hubblenet image"
           ARG HUBBLENET_RELEASE_TAG
+          ARG VM_ID
 
           RUN mkdir -p /root/.avalanchego/plugins \
             && DEBIAN_FRONTEND="noninteractive" apt update \
@@ -61,16 +67,11 @@ jobs:
               export HUBBLENET_VERSION="\${HUBBLENET_RELEASE_TAG}"; \
             fi
 
+          COPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/\${VM_ID}
+
           EOF
           )
-
-          if [ "$AVALANCHE_ENVIRONMENT" = "mainnet" ]; then
-            multiline_text+="\nCOPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz"
-          fi
-          if [ "$AVALANCHE_ENVIRONMENT" = "testnet" ]; then
-            multiline_text+="\nCOPY --from=builder /tmp/hubblenet-\${HUBBLENET_VERSION} /root/.avalanchego/plugins/jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ"
-          fi
-
+          
           echo "$multiline_text" > Dockerfile-release 
 
       - name: Build and push release image for the mainnet
@@ -81,9 +82,10 @@ jobs:
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-${{ github.ref_name }}"
         env:
-          HUBBLENET_RELEASE_TAG: "${{github.ref_name}}"
-          AVALANCHE_VERSION: "${{ vars.AVALANCHE_VERSION }}"
-          AVALANCHE_ENVIRONMENT: mainnet
+          HUBBLENET_RELEASE_TAG: ${{github.ref_name}}
+          AVALANCHE_VERSION: ${{ vars.AVALANCHE_VERSION }}
+          VM_ID: o1Fg94YujMqL75Ebrdkos95MTVjZpPpdeAp5ocEsp2X9c2FSz
+
 
       - name: Build and push release image for the fuji
         uses: docker/build-push-action@v5
@@ -93,6 +95,6 @@ jobs:
           push: true
           tags: "logisticx/ava:${{ vars.AVALANCHE_VERSION }}-fuji-${{ github.ref_name }}"
         env:
-          HUBBLENET_RELEASE_TAG: "${{github.ref_name}}"
-          AVALANCHE_VERSION: "${{ vars.AVALANCHE_VERSION }}"
-          AVALANCHE_ENVIRONMENT: testnet
+          HUBBLENET_RELEASE_TAG: ${{github.ref_name}}
+          AVALANCHE_VERSION: ${{ vars.AVALANCHE_VERSION }}
+          VM_ID: jvrKsTB9MfYGnAXtxbzFYpXKceXr9J8J8ej6uWGrYM5tXswhJ 
